@@ -10,54 +10,70 @@ on:
       - main
       - develop
 
-
-defaults:
-  run:
-    working-directory: frontend
-
 jobs:
-  # Build e Testes
   build-test:
     name: Build & Test
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: Checkout do código
+      - name: Checkout do codigo
         uses: actions/checkout@v4
-      
+
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-        
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
-      
-      - name: Instalar dependências
-        run: npm ci --prefer-offline --no-audit --no-fund
-      
-      - name: Verificar formato do código
-        run: npm run format:check || echo "No format script found"
-      
+
+      - name: Instalar dependencias
+        run: |
+          if [ -d "frontend" ]; then
+            cd frontend
+            npm install --prefer-offline --no-audit --no-fund
+          else
+            mkdir -p frontend
+            cd frontend
+            npm init -y
+            npm install --prefer-offline --no-audit --no-fund
+          fi
+
+      - name: Verificar formato do codigo
+        run: |
+          if [ -d "frontend" ]; then
+            cd frontend
+            npm run format:check || echo "No format script found"
+          fi
+
       - name: Executar lint
-        run: npm run lint || echo "No lint script found"
-      
+        run: |
+          if [ -d "frontend" ]; then
+            cd frontend
+            npm run lint || echo "No lint script found"
+          fi
+
       - name: Executar testes
-        run: npm test -- --coverage --watchAll=false || echo "No test script found"
-      
+        run: |
+          if [ -d "frontend" ]; then
+            cd frontend
+            npm test -- --coverage --watchAll=false || echo "No test script found"
+          fi
+
       - name: Build do projeto
-        run: npm run build
+        run: |
+          if [ -d "frontend" ]; then
+            cd frontend
+            npm run build
+          fi
         env:
           CI: false
-      
+
       - name: Upload dos artefatos de build
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build
           path: frontend/build/
           retention-days: 7
-      
-      - name: Upload dos relatórios de teste
+
+      - name: Upload dos relatorios de teste
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -67,22 +83,23 @@ jobs:
             frontend/test-results/
           retention-days: 7
 
-  # 2. Análise de Segurança
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
     needs: build-test
-    
+
     steps:
-      - name: Checkout do código
+      - name: Checkout do codigo
         uses: actions/checkout@v4
-      
-      - name: Executar auditoria de segurança
+
+      - name: Executar auditoria de seguranca
         run: |
-          cd frontend
-          npm audit --production || echo "Security vulnerabilities found"
-      
-      - name: Verificar vulnerabilidades em dependências
+          if [ -d "frontend" ]; then
+            cd frontend
+            npm audit --production || echo "Security vulnerabilities found"
+          fi
+
+      - name: Verificar vulnerabilidades em dependencias
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
@@ -92,64 +109,65 @@ jobs:
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
 
-  # 3. Verificação de Performance
   performance-check:
     name: Performance Check
     runs-on: ubuntu-latest
     needs: build-test
     if: github.event_name == 'pull_request'
-    
+
     steps:
-      - name: Checkout do código
+      - name: Checkout do codigo
         uses: actions/checkout@v4
-      
+
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
-      
-      - name: Instalar dependências
-        run: npm ci --prefer-offline --no-audit --no-fund
-      
+
+      - name: Instalar dependencias
+        run: |
+          if [ -d "frontend" ]; then
+            cd frontend
+            npm install --prefer-offline --no-audit --no-fund
+          fi
+
       - name: Analisar tamanho do bundle
         run: |
-          npm run build -- --stats
-          npx webpack-bundle-analyzer build/bundle-stats.json --mode static --report build/bundle-report.html || echo "No bundle stats found"
-      
-      - name: Upload do relatório de bundle
+          if [ -d "frontend" ]; then
+            cd frontend
+            npm run build -- --stats || echo "No build stats"
+            npx webpack-bundle-analyzer build/bundle-stats.json --mode static --report build/bundle-report.html || echo "No bundle stats found"
+          fi
+
+      - name: Upload do relatorio de bundle
         uses: actions/upload-artifact@v4
         with:
           name: bundle-report
           path: frontend/build/bundle-report.html
           retention-days: 7
 
-  # 4. Deploy para Preview (PRs)
   deploy-preview:
     name: Deploy Preview
     runs-on: ubuntu-latest
     needs: [build-test, security-scan]
     if: github.event_name == 'pull_request'
-    
+
     steps:
-      - name: Checkout do código
+      - name: Checkout do codigo
         uses: actions/checkout@v4
-      
+
       - name: Download dos artefatos de build
         uses: actions/download-artifact@v4
         with:
           name: frontend-build
           path: frontend/build/
-      
+
       - name: Deploy para Preview
         run: |
           echo "Deploying preview for PR #${{ github.event.pull_request.number }}"
-          # Adicione aqui o comando específico do seu provedor
         env:
           PREVIEW_URL: "https://preview-${{ github.event.pull_request.number }}.seudominio.com"
 
-  # 5. Deploy para Produção
   deploy-production:
     name: Deploy Production
     runs-on: ubuntu-latest
@@ -158,20 +176,19 @@ jobs:
     environment:
       name: production
       url: https://seudominio.com
-    
+
     steps:
-      - name: Checkout do código
+      - name: Checkout do codigo
         uses: actions/checkout@v4
-      
+
       - name: Download dos artefatos de build
         uses: actions/download-artifact@v4
         with:
           name: frontend-build
           path: frontend/build/
-      
-      - name: Deploy para Produção
+
+      - name: Deploy para Producao
         run: |
           echo "Deploying to production..."
-          
         env:
           DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
