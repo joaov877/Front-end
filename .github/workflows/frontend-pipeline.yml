@@ -19,46 +19,33 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
 
       - name: Instalar dependências
         run: |
-          if [ -d "frontend" ]; then
-            cd frontend
-            npm install --prefer-offline --no-audit --no-fund
-          else
-            mkdir -p frontend
-            cd frontend
-            npm init -y
-            npm install --prefer-offline --no-audit --no-fund
-          fi
+          cd frontend
+          npm install --prefer-offline --no-audit --no-fund
 
       - name: Verificar formato do código
         run: |
-          if [ -d "frontend" ]; then
-            cd frontend
-            npm run format:check || echo "Nenhum script de formatação encontrado"
-          fi
+          cd frontend
+          npm run format:check || echo "Nenhum script de formatação encontrado"
 
       - name: Executar lint
         run: |
-          if [ -d "frontend" ]; then
-            cd frontend
-            npm run lint || echo "Nenhum script lint encontrado"
-          fi
+          cd frontend
+          npm run lint || echo "Nenhum script lint encontrado"
 
       - name: Executar testes
         run: |
-          if [ -d "frontend" ]; then
-            cd frontend
-            npm test -- --coverage --watchAll=false || echo "Nenhum script de teste encontrado"
-          fi
+          cd frontend
+          npm test -- --coverage --watchAll=false || echo "Nenhum script de teste encontrado"
 
       - name: Construir o projeto
         run: |
-          if [ -d "frontend" ]; then
-            cd frontend
-            npm run build || echo "Nenhum script de compilação encontrado"
-          fi
+          cd frontend
+          npm run build || echo "Nenhum script de compilação encontrado"
         env:
           CI: false
 
@@ -91,10 +78,8 @@ jobs:
 
       - name: Executar auditorias de segurança
         run: |
-          if [ -d "frontend" ]; then
-            cd frontend
-            npm audit --production || echo "Vulnerabilidades de segurança encontradas"
-          fi
+          cd frontend
+          npm audit --production || echo "Vulnerabilidades de segurança encontradas"
 
       - name: Verificar vulnerabilidades em dependências
         uses: aquasecurity/trivy-action@master
