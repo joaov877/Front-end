@@ -20,21 +20,21 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: ./Front-node/package-lock.json
+          cache-dependency-path: ./frontend/package-lock.json
 
       - name: Instalar dependências
         run: |
-          cd Front-node
+          cd frontend
           npm ci
 
       - name: Rodar lint
         run: |
-          cd Front-node
+          cd frontend
           npm run lint || echo " Lint script não encontrado"
 
       - name: Build de produção
         run: |
-          cd Front-node
+          cd frontend
           npm run build
         env:
           CI: false
@@ -72,8 +72,8 @@ jobs:
       - name: Build e push da imagem
         uses: docker/build-push-action@v6
         with:
-          context: ./Front-node
-          file: ./Front-node/Dockerfile
+          context: ./frontend
+          file: ./frontend/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.TAGS }}
           cache-from: type=gha
