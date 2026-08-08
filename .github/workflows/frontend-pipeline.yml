@@ -1,4 +1,4 @@
-name: Frontend CI
+name: CI de Frontend
 
 on:
   push:
@@ -8,11 +8,11 @@ on:
 
 jobs:
   build-test:
-    name: Build & Test
+    name: Construir e Testar
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout do código
+      - name: Finalizar compra do código
         uses: actions/checkout@v4
 
       - name: Configurar Node.js
@@ -32,14 +32,14 @@ jobs:
             npm install --prefer-offline --no-audit --no-fund
           fi
 
-      - name: Verificar formato do código
+      - name: Verifique o formato do código
         run: |
           if [ -d "frontend" ]; then
             cd frontend
             npm run format:check || echo "Nenhum script de formatação encontrado"
           fi
 
-      - name: Executar lint
+      - name: lint executáveis
         run: |
           if [ -d "frontend" ]; then
             cd frontend
@@ -50,14 +50,16 @@ jobs:
         run: |
           if [ -d "frontend" ]; then
             cd frontend
+            mkdir -p coverage test-results
             npm test -- --coverage --watchAll=false || echo "Nenhum script de teste encontrado"
           fi
 
-      - name: Construir o projeto
+      - name: Build do projeto
         run: |
           if [ -d "frontend" ]; then
             cd frontend
-            npm run build || echo "Nenhum script de compilação encontrado"
+            mkdir -p dist
+            npm run build || echo "Nenhum script de build encontrado"
           fi
         env:
           CI: false
@@ -81,19 +83,19 @@ jobs:
           retention-days: 7
 
   security-scan:
-    name: Security Scan
+    name: Verificação de Segurança
     runs-on: ubuntu-latest
     needs: build-test
 
     steps:
-      - name: Checkout do código
+      - name: Finalizar compra do código
         uses: actions/checkout@v4
 
       - name: Executar auditorias de segurança
         run: |
           if [ -d "frontend" ]; then
             cd frontend
-            npm audit --production || echo "Vulnerabilidades de segurança encontradas"
+            npm audit --production || echo "Vulnerabilidades de segurança detectadas"
           fi
 
       - name: Verificar vulnerabilidades em dependências
@@ -107,14 +109,17 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
   docker-build:
-    name: Build & Push Docker Image
+    name: Criar e enviar imagem Docker
     runs-on: ubuntu-latest
     needs: [build-test, security-scan]
     if: github.event_name == 'push'
 
     steps:
-      - name: Checkout do código
+      - name: Finalizar compra do código
         uses: actions/checkout@v4
+
+      - name: Listar diretórios (debug)
+        run: ls -la
 
       - name: Configurar Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -128,7 +133,7 @@ jobs:
       - name: Build e push da imagem
         uses: docker/build-push-action@v6
         with:
-          context: ./frontend
+          context: .
           file: ./frontend/Dockerfile
           push: true
           tags: |
