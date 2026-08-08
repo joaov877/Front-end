@@ -22,45 +22,25 @@ jobs:
 
       - name: Instalar dependências
         run: |
-          if [ -d "frontend" ]; then
-            cd frontend
-            npm install --prefer-offline --no-audit --no-fund
-          else
-            mkdir -p frontend
-            cd frontend
-            npm init -y
-            npm install --prefer-offline --no-audit --no-fund
-          fi
+          npm install --prefer-offline --no-audit --no-fund
 
       - name: Verifique o formato do código
         run: |
-          if [ -d "frontend" ]; then
-            cd frontend
-            npm run format:check || echo "Nenhum script de formatação encontrado"
-          fi
+          npm run format:check || echo "Nenhum script de formatação encontrado"
 
       - name: lint executáveis
         run: |
-          if [ -d "frontend" ]; then
-            cd frontend
-            npm run lint || echo "Nenhum script lint encontrado"
-          fi
+          npm run lint || echo "Nenhum script lint encontrado"
 
       - name: Executar testes
         run: |
-          if [ -d "frontend" ]; then
-            cd frontend
-            mkdir -p coverage test-results
-            npm test -- --coverage --watchAll=false || echo "Nenhum script de teste encontrado"
-          fi
+          mkdir -p coverage test-results
+          npm test -- --coverage --watchAll=false || echo "Nenhum script de teste encontrado"
 
-      - name: Build do projeto
+      - name: Construir o projeto
         run: |
-          if [ -d "frontend" ]; then
-            cd frontend
-            mkdir -p dist
-            npm run build || echo "Nenhum script de build encontrado"
-          fi
+          mkdir -p dist
+          npm run build || echo "Nenhum script de build encontrado"
         env:
           CI: false
 
@@ -68,7 +48,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build
-          path: frontend/dist/
+          path: dist/
           retention-days: 7
         if: always()
 
@@ -78,8 +58,8 @@ jobs:
         with:
           name: frontend-test-reports
           path: |
-            frontend/coverage/
-            frontend/test-results/
+            coverage/
+            test-results/
           retention-days: 7
 
   security-scan:
@@ -93,12 +73,9 @@ jobs:
 
       - name: Executar auditorias de segurança
         run: |
-          if [ -d "frontend" ]; then
-            cd frontend
-            npm audit --production || echo "Vulnerabilidades de segurança detectadas"
-          fi
+          npm audit --production || echo "Vulnerabilidades de segurança detectadas"
 
-      - name: Verificar vulnerabilidades em dependências
+      - name: Verifique vulnerabilidades em dependências
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
@@ -134,7 +111,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./frontend/Dockerfile
+          file: Dockerfile
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/frontend-react:latest
