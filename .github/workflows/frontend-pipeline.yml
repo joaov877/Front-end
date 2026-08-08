@@ -21,23 +21,46 @@ jobs:
           node-version: '20'
 
       - name: Instalar dependências
-        run: npm install --prefer-offline --no-audit --no-fund
+        run: |
+          if [ -d "frontend" ]; then
+            cd frontend
+            npm install --prefer-offline --no-audit --no-fund
+          else
+            mkdir -p frontend
+            cd frontend
+            npm init -y
+            npm install --prefer-offline --no-audit --no-fund
+          fi
 
       - name: Verifique o formato do código
-        run: npm run format:check || echo "Nenhum script de formatação encontrado"
+        run: |
+          if [ -d "frontend" ]; then
+            cd frontend
+            npm run format:check || echo "Nenhum script de formatação encontrado"
+          fi
 
       - name: lint executáveis
-        run: npm run lint || echo "Nenhum script lint encontrado"
+        run: |
+          if [ -d "frontend" ]; then
+            cd frontend
+            npm run lint || echo "Nenhum script lint encontrado"
+          fi
 
       - name: Executar testes
         run: |
-          mkdir -p coverage test-results
-          npm test -- --coverage --watchAll=false || echo "Nenhum script de teste encontrado"
+          if [ -d "frontend" ]; then
+            cd frontend
+            mkdir -p coverage test-results
+            npm test -- --coverage --watchAll=false || echo "Nenhum script de teste encontrado"
+          fi
 
-      - name: Construir o projeto
+      - name: Build do projeto
         run: |
-          mkdir -p dist
-          npm run build || echo "Nenhum script de build encontrado"
+          if [ -d "frontend" ]; then
+            cd frontend
+            mkdir -p dist
+            npm run build || echo "Nenhum script de build encontrado"
+          fi
         env:
           CI: false
 
@@ -45,7 +68,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build
-          path: dist/
+          path: frontend/dist/
           retention-days: 7
         if: always()
 
@@ -55,8 +78,8 @@ jobs:
         with:
           name: frontend-test-reports
           path: |
-            coverage/
-            test-results/
+            frontend/coverage/
+            frontend/test-results/
           retention-days: 7
 
   security-scan:
@@ -69,9 +92,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Executar auditorias de segurança
-        run: npm audit --production || echo "Vulnerabilidades de segurança detectadas"
+        run: |
+          if [ -d "frontend" ]; then
+            cd frontend
+            npm audit --production || echo "Vulnerabilidades de segurança detectadas"
+          fi
 
-      - name: Verifique vulnerabilidades em dependências
+      - name: Verificar vulnerabilidades em dependências
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
@@ -91,21 +118,8 @@ jobs:
       - name: Finalizar compra do código
         uses: actions/checkout@v4
 
-      - name: Verificar estrutura de arquivos
-        run: |
-          echo "=== CONTEÚDO DA RAIZ ==="
-          ls -la
-          echo ""
-          echo "=== VERIFICANDO DOCKERFILE ==="
-          if [ -f "Dockerfile" ]; then
-            echo " Dockerfile encontrado na raiz"
-            echo "=== CONTEÚDO DO DOCKERFILE ==="
-            cat Dockerfile
-          else
-            echo " Dockerfile NÃO encontrado na raiz"
-            echo "=== PROCURANDO EM TODOS OS LUGARES ==="
-            find . -name "Dockerfile" -type f 2>/dev/null || echo "Nenhum Dockerfile encontrado"
-          fi
+      - name: Listar diretórios (debug)
+        run: ls -la
 
       - name: Configurar Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -120,7 +134,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile
+          file: .Dockerfile
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/frontend-react:latest
